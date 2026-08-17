@@ -186,13 +186,6 @@ Key cache usages:
 - Frequently accessed order tracking view where applicable
 - Temporary lookup data used during checkout
 
-Important cache practices:
-
-- Use clear cache keys based on business identifiers.
-- Apply TTL to avoid stale data.
-- Log cache hit, cache miss, and DB fallback cases.
-- Do not cache sensitive data unnecessarily.
-- Use cache only where it improves performance without breaking business correctness.
 
 ## 9. Security Design
 
@@ -276,39 +269,12 @@ Key observability items:
 - Logs containing order ID, cart ID, customer ID where safe, payment reference, and service name.
 - API latency metrics.
 - Error rate metrics.
-- Redis hit/miss ratio.
-- Kafka consumer lag.
-- SQS queue depth and DLQ count.
-- Payment failure percentage.
-- Inventory reservation failure count.
-- ECS task restart count.
-- RDS CPU and slow query indicators.
-- Dashboards for production monitoring.
+
 
 ## 12. Integration Testing and API Contract Management
 
 Integration testing is important because most production issues in microservices are not isolated to one class or one API. They often happen because of contract mismatch, timeout differences, missing configuration, invalid payloads, or downstream behavior changes.
 
-Testing focus areas:
-
-- Cart to Product integration.
-- Cart to Pricing integration.
-- Order to Inventory integration.
-- Order to Payment integration.
-- Payment callback handling.
-- Shipment partner response handling.
-- Notification retry and DLQ handling.
-- API backward compatibility.
-- Environment-specific configuration validation.
-
-API contract practices:
-
-- Maintain OpenAPI documentation.
-- Avoid breaking response fields used by existing clients.
-- Add new fields in a backward-compatible way where possible.
-- Introduce API versioning for breaking changes.
-- Validate request and response examples during integration testing.
-- Review error codes and error response structure before release.
 
 ## 13. Deployment and Release Strategy
 
@@ -334,58 +300,9 @@ Support documents are important because they reduce dependency on individual tea
 
 The issue tracker captures production and UAT issues in a consistent format.
 
-```text
-Issue ID: FH-INC-001
-Title: Payment success received but order not confirmed
-Environment: Production
-Severity: High
-Impacted Services: Order Service, Payment Service, Notification Service
-Customer Impact: Payment completed but order confirmation delayed
-Correlation ID: <correlation-id>
-Order ID: <order-id>
-Payment Reference: <payment-reference>
-Current Status: Open / In Progress / Resolved / Monitoring
-Owner: Backend Team
-Initial Observation:
-  - Payment callback received
-  - Order remained in PENDING state
-  - Notification was not triggered
-Action Taken:
-  - Checked logs using correlation ID
-  - Verified payment provider response
-  - Checked order update flow
-  - Reprocessed failed event if required
-  - Updated issue notes for support team
-```
-
 ### RCA Document
 
 RCA is created for repeated or high-impact incidents.
-
-```text
-RCA Title: Order confirmation delay after payment success
-Incident Date: <date>
-Severity: High
-Services Involved: Order Service, Payment Service, Notification Service
-
-What Happened:
-Payment was completed successfully, but order confirmation was delayed for some orders.
-
-Impact:
-Customers saw payment completed, but order status was not updated immediately.
-
-Root Cause:
-Order update processing was delayed due to downstream failure, timeout, or message processing delay.
-
-Immediate Fix:
-Affected orders were validated and reprocessed safely.
-
-Long-Term Fix:
-- Added better alerting for payment-order mismatch.
-- Improved logs with payment reference and order ID.
-- Updated retry and idempotency handling.
-- Added runbook steps for support team.
-```
 
 ### Runbook
 
@@ -396,33 +313,10 @@ Examples:
 - High payment failure rate.
 - Order stuck in PENDING state.
 - Inventory reserved but payment failed.
-- Kafka consumer lag.
-- DLQ message replay.
-- Redis cache issue.
-- Shipment creation failure.
-- High API latency after deployment.
 
 ### Deployment Checklist
 
-```text
-Before Deployment:
-- Code review completed
-- Unit tests passed
-- Integration tests passed
-- API contract reviewed
-- Configuration verified
-- Rollback plan ready
-- Monitoring dashboard available
-
-After Deployment:
-- Health check completed
-- Smoke test completed
-- Error rate checked
-- API latency checked
-- Queue/DLQ checked
-- Logs checked for new exceptions
-- Business metrics monitored
-```
+There is a deployment checklist which need to be followed during release. All Checks are green than only deployment starts.
 
 ## 15. Key Challenges
 
