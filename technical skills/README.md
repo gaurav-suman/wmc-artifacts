@@ -59,63 +59,66 @@ A Saga Orchestrator is present as part of the Order Service. If order, inventory
 
 ### 6. Integrated Service Flow Diagram
   
-The diagram below shows one complete customer journey from product browsing to order confirmation.Customer
-   |
-   v
-Web / Mobile App
-   |
-   v
-API Gateway
-   |
-   |-- Validate request
-   |-- Validate token for protected APIs
-   |-- Add correlation ID
-   |-- Route request to target service
-   |
-   v
-+-------------------+        +-------------------+        +-------------------+
-| Product Service   |<------>| Redis Cache       |<------>| RDS PostgreSQL    |
-| Product details   |        | Product/category  |        | Product catalog   |
-| Search/listing    |        | Frequently read   |        | Persistent data   |
-+---------+---------+        +-------------------+        +-------------------+
-          |
-          v
-+-------------------+        +-------------------+        +-------------------+
-| Cart Service      |<------>| Redis Cache       |<------>| Pricing Service   |
-| Add/update item   |        | Active cart       |        | Price/offer check |
-| Cart summary      |        | Cart summary      |        | Discount rules    |
-+---------+---------+        +-------------------+        +-------------------+
-          |
-          v
-+-------------------+
-| Order Service     |
-| Checkout request  |
-| Idempotency check |
-| Order lifecycle   |
-+---------+---------+
-          |
-          | REST / Async message depending on operation
-          v
-+-------------------+        +-------------------+        +-------------------+
-| Inventory Service |------->| Payment Service   |------->| Shipment Service  |
-| Reserve stock     |        | Authorize payment |        | Create shipment   |
-| Release stock     |        | Capture/refund    |        | Tracking details  |
-+---------+---------+        +---------+---------+        +---------+---------+
-          |                            |                            |
-          |                            |                            |
-          v                            v                            v
-+--------------------------------------------------------------------------+
-| Messaging Layer: Kafka / SQS / SNS                                       |
-| Used for async processing, retryable flows, notifications, audit events,  |
-| delay handling, and decoupling heavy background work                     |
-+-------------------------------+------------------------------------------+
-                                |
-                                v
-+-------------------+        +-------------------+        +-------------------+
-| Notification      |        | Audit Service     |        | CloudWatch /      |
-| Service           |        | Audit trail       |        | Dashboards        |
-| Email/SMS/Push    |        | Support lookup    |        | Logs/metrics      |
-+-------------------+        +-------------------+        +-------------------+
+The diagram below shows one complete customer journey from product browsing to order confirmation.+----------------------+
+|  Web / Mobile Apps   |
++----------+-----------+
+           |
+           v
++----------------------+
+|     API Gateway      |
+| - JWT Validation     |
+| - Rate Limiting      |
+| - Correlation ID     |
++----------+-----------+
+           |
+           v
++------------------------------------------------------------+
+|                    Core Business Services                  |
++------------------------------------------------------------+
+| Product | Customer | Cart | Pricing | Order | Review      |
++------------------------------------------------------------+
+           |
+           v
++------------------------------------------------------------+
+|                 Checkout Orchestration Flow                |
++------------------------------------------------------------+
+| Order Service                                               |
+|      |                                                      |
+|      +--> Inventory Service (Reserve Stock)                |
+|      +--> Payment Service (Authorize Payment)              |
+|      +--> Shipment Service (Create Shipment)               |
++------------------------------------------------------------+
+           |
+           v
++------------------------------------------------------------+
+|            Event & Messaging Layer                         |
++------------------------------------------------------------+
+| Kafka Topics | SNS | SQS | DLQ                             |
++------------------------------------------------------------+
+           |
+           v
++------------------------------------------------------------+
+|             Downstream Processing Services                 |
++------------------------------------------------------------+
+| Notification | Audit | Reporting | Analytics              |
++------------------------------------------------------------+
+           |
+           v
++------------------------------------------------------------+
+|                   Data & Infrastructure                    |
++------------------------------------------------------------+
+| Redis Cache                                                 |
+| RDS PostgreSQL                                              |
+| S3 (Images, Invoices, Reports)                              |
++------------------------------------------------------------+
+           |
+           v
++------------------------------------------------------------+
+|              Observability & Operations                    |
++------------------------------------------------------------+
+| CloudWatch Logs | Metrics | Dashboards | Alerts | RCA      |
++------------------------------------------------------------+
+
 
 ### 7. Key Challenges and there solution
   
