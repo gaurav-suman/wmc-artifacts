@@ -59,7 +59,9 @@ A Saga Orchestrator is present as part of the Order Service. If order, inventory
 
 ### 6. Integrated Service Flow Diagram
   
-The diagram below shows one complete customer journey from product browsing to order confirmation.+----------------------+
+The diagram below shows one complete customer journey from product browsing to order confirmation:
+
++----------------------+
 |  Web / Mobile Apps   |
 +----------+-----------+
            |
