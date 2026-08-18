@@ -2,8 +2,8 @@
 
 ## 1. Introduction
 
-FashionHub is an enterprise-level e-commerce platform built for women's fashion retail. The application supports product discovery, cart management, checkout, payment, inventory reservation, shipment tracking, notifications, audit, and operational support.  
-I worked on this project as part of the backend engineering team, mainly around Java, Spring Boot, microservices, REST API development, service integrations, Redis caching, security, observability, deployment support, and production issue analysis.
+FashionHub is an enterprise-level e-commerce platform built for women's fashion retail. The application supports product discovery, cart management, checkout, payment, inventory reservation, shipment [...]
+I worked on this project as part of the backend engineering team, mainly around Java, Spring Boot, microservices, REST API development, service integrations, Redis caching, security, observability, de[...] 
 
 ### 2. Business Context
   
@@ -37,7 +37,7 @@ The main business needs are:
 
 ### 4. High-Level Architecture
   
-FashionHub follows a microservices-based design where each service owns a clear business capability. The services communicate using REST for immediate operations and messaging for asynchronous background processing.  
+FashionHub follows a microservices-based design where each service owns a clear business capability. The services communicate using REST for immediate operations and messaging for asynchronous backgro[...]
 The platform has four major layers:
 - **Client and Gateway Layer**
 - Web and mobile clients call APIs through the API Gateway.
@@ -54,26 +54,27 @@ The platform has four major layers:
 
 ### 5. Architecture
   
-In this microservice architecture, each service should own its data model. In the diagram, AWS RDS PostgreSQL a managed database platform, not as one common shared schema that all services directly access.  
-A Saga Orchestrator is present as part of the Order Service. If order, inventory, payment, and shipment are truly separate service boundaries, saga-style coordination is required to manage eventual consistency and compensation.
+In this microservice architecture, each service should own its data model. In the diagram, AWS RDS PostgreSQL a managed database platform, not as one common shared schema that all services directly ac[...]
+A Saga Orchestrator is present as part of the Order Service. If order, inventory, payment, and shipment are truly separate service boundaries, saga-style coordination is required to manage eventual co[...]
 
 ### 6. Integrated Service Flow Diagram
-  
-The diagram below shows one complete customer journey from product browsing to order confirmation:
 
-+----------------------+
-|  Web / Mobile Apps   |
-+----------+-----------+
-           |
-           v
-+----------------------+
-|     API Gateway      |
-| - JWT Validation     |
-| - Rate Limiting      |
-| - Correlation ID     |
-+----------+-----------+
-           |
-           v
+To ensure the ASCII diagram renders correctly in preview, it is wrapped in a fenced code block below.
+
+```text
++----------------------+                       
+|  Web / Mobile Apps   |                       
++----------+-----------+                       
+           |                                   
+           v                                   
++----------------------+                       
+|     API Gateway      |                       
+| - JWT Validation     |                       
+| - Rate Limiting      |                       
+| - Correlation ID     |                       
++----------+-----------+                       
+           |                                   
+           v                                   
 +------------------------------------------------------------+
 |                    Core Business Services                  |
 +------------------------------------------------------------+
@@ -120,6 +121,7 @@ The diagram below shows one complete customer journey from product browsing to o
 +------------------------------------------------------------+
 | CloudWatch Logs | Metrics | Dashboards | Alerts | RCA      |
 +------------------------------------------------------------+
+```
 
 
 ### 7. Key Challenges and there solution
@@ -127,29 +129,29 @@ The diagram below shows one complete customer journey from product browsing to o
 Some practical challenges in maintaining this application were:
 
 - Choosing b/w Kafka and SQS:
-   SQS was cheaper than Kafka interms of cost but in this project as events are produced and consumed by multiple services kafka was the better choice, for different service commiunication. Kafka also provide us event replay, consumer group isolation, partition-based scalability.
+   SQS was cheaper than Kafka interms of cost but in this project as events are produced and consumed by multiple services kafka was the better choice, for different service commiunication. Kafka also[...]
 
 - Handling high traffic during sale events without overloading database and downstream service:
    1. Redis cache is introduced into search APIs which gives faster response.
-   2. On normal days, ECS service was running with 1 task handling around 300 to 400 users/day. For Diwali sale, we configured target-tracking autoscaling to scale from 1 to 4 tasks based on CPU above 75%, memory above 80%, and ALB request count, supporting upto 2000 to 3000 users/day.
+   2. On normal days, ECS service was running with 1 task handling around 300 to 400 users/day. For Diwali sale, we configured target-tracking autoscaling to scale from 1 to 4 tasks based on CPU above[...]
 
 - Keeping checkout reliable across order, inventory, payment, and shipment flows:
-   Order Service as the checkout coordinator. It create the order in PENDING state, call Inventory for stock reservation, Payment, and Shipment after payment success. Failures were handled using status transitions, retries, timeout configuration, and compensation like inventory release.
+   Order Service as the checkout coordinator. It create the order in PENDING state, call Inventory for stock reservation, Payment, and Shipment after payment success. Failures were handled using statu[...]
 
 - Inventory Overselling During Concurrent Checkout
-    Multiple customers attempted to purchase the same product simultaneously during sale events, causing inventory inconsistencies. So implemented optimistic locking using a version column in Inventory Service and atomic Integer for stock reservation updates.
+    Multiple customers attempted to purchase the same product simultaneously during sale events, causing inventory inconsistencies. So implemented optimistic locking using a version column in Inventor[...]
 
 - Preventing duplicate orders and duplicate payments during retry scenarios:
-   Introduced an Idempotency-Key header in checkout APIs.The key was stored with customerId + cartId + requestHash in RDS with a unique constraint. If the same request came again, we returned the existing order instead of creating a new one.
+   Introduced an Idempotency-Key header in checkout APIs.The key was stored with customerId + cartId + requestHash in RDS with a unique constraint. If the same request came again, we returned the exis[...]
 
 - Debugging duplicate event processing across services:
-   Duplicate Kafka events were handled by storing processed_eventId key in a deduplication_table. Before processing any event, the consumer checked whether the event was already processed. This avoided duplicate payment updates, duplicate notifications, and repeated order status transitions.
+   Duplicate Kafka events were handled by storing processed_eventId key in a deduplication_table. Before processing any event, the consumer checked whether the event was already processed. This avoide[...]
 
 - Debugging issues across multiple services using correlation ID and business identifiers:
-   Propagated correlationId from API Gateway to all Spring Boot services using request filters and MDC logging. Logs included correlationId, orderId, cartId, and paymentReference, which helped trace the same request across Cart, Order, Inventory, Payment, and Notification services.
+   Propagated correlationId from API Gateway to all Spring Boot services using request filters and MDC logging. Logs included correlationId, orderId, cartId, and paymentReference, which helped trace t[...]
 
 - Issue: Payment Callback Arriving Before Kafka Event Processing
-    Implemented strict order status transitions (PENDING → PAYMENT_COMPLETED → INVENTORY_RESERVED → SHIPPED → CONFIRMED) to prevent invalid updates. Payment callbacks were made idempotent by checking current order state before processing.
+    Implemented strict order status transitions (PENDING → PAYMENT_COMPLETED → INVENTORY_RESERVED → SHIPPED → CONFIRMED) to prevent invalid updates. Payment callbacks were made idempotent by c[...]
     Scheduled Every 6 hours reconciliation jobs fixed orders stuck due to callback or consumer failures.
 
 - Kafka Partition tuning and Lost/Failed event handling
@@ -167,6 +169,6 @@ Some practical challenges in maintaining this application were:
 | SNS             | Low traffic             | ₹500                |
 | S3              | Images + invoices       | ₹300                |
 | CloudWatch      | Logs + dashboards       | ₹1,000              |
-| **Total**       |                         | **\~₹12,800/month** |
+| **Total**       |                         | **~₹12,800/month** |
 
 
