@@ -54,12 +54,115 @@ The platform has four major layers:
 
 ### 5. Architecture
   
-In this microservice architecture, each service should own its data model. In the diagram, AWS RDS PostgreSQL a managed database platform, not as one common shared schema that all services directly access.  
+In this microservice architecture, each service should own its data model. In the below Flow diagram, AWS RDS PostgreSQL a managed database platform, not as one common shared schema that all services directly access.  
 A Saga Orchestrator is present as part of the Order Service. If order, inventory, payment, and shipment are truly separate service boundaries, saga-style coordination is required to manage eventual consistency and compensation.
+
+flowchart TB
+
+    %% Client Layer
+    C[Web / Mobile Apps]
+    G["API Gateway<br/>JWT • Rate Limit • Routing"]
+    P[Product Service]
+    CU[Customer Service]
+    CA[Cart Service]
+    PR[Pricing Service]
+    O["Order Service<br/>Saga Orchestrator"]
+    I[Inventory Service]
+    PAY[Payment Service]
+    S[Shipment Service]
+    N[Notification Service]
+    R[Review Service]
+    A[Audit Service]
+    REDIS["(Redis Cache)"]
+
+    PDB["(Product DB)"]
+    CDB["(Customer DB)"]
+    CADB["(Cart DB)"]
+    ODB["(Order DB)"]
+    IDB["(Inventory DB)"]
+    PAYDB["(Payment DB)"]
+    SDB["(Shipment DB)"]
+    K["(Kafka)"]
+    SNS["(SNS)"]
+    SQS["(SQS)"]
+    DLQ["(DLQ)"]
+    S3["(S3 Bucket)"]
+    PG[Payment Gateway]
+    CP[Courier Partner]
+    CW[CloudWatch]
+    GRAF[Dashboards & Alerts]
+    C --> G
+
+    G --> P
+    G --> CU
+    G --> CA
+    G --> PR
+    G --> O
+    G --> R
+
+    %% Cache
+    P --> REDIS
+    CA --> REDIS
+
+    %% Service Databases
+    P --> PDB
+    CU --> CDB
+    CA --> CADB
+    O --> ODB
+    I --> IDB
+    PAY --> PAYDB
+    S --> SDB
+
+    %% Saga Flow
+    O --> I
+    O --> PAY
+    O --> S
+
+    %% External Integrations
+    PAY --> PG
+    S --> CP
+
+    %% Event Publishing
+    O --> K
+    I --> K
+    PAY --> K
+    S --> K
+
+    %% Async Consumers
+    K --> N
+    K --> A
+
+    %% Fanout
+    K --> SNS
+    SNS --> SQS
+    SQS --> N
+
+    %% Failed Messages
+    K --> DLQ
+
+    %% Storage
+    P --> S3
+    O --> S3
+    N --> S3
+
+    %% Monitoring
+    P --> CW
+    CU --> CW
+    CA --> CW
+    O --> CW
+    I --> CW
+    PAY --> CW
+    S --> CW
+    N --> CW
+
+    CW --> GRAF
 
 ### 6. Integrated Service Flow Diagram
   
-The diagram below shows one complete customer journey from product browsing to order confirmation.+----------------------+
+The diagram below shows one complete customer journey from product browsing to order confirmation.
+
+```text
++----------------------+
 |  Web / Mobile Apps   |
 +----------+-----------+
            |
@@ -118,7 +221,7 @@ The diagram below shows one complete customer journey from product browsing to o
 +------------------------------------------------------------+
 | CloudWatch Logs | Metrics | Dashboards | Alerts | RCA      |
 +------------------------------------------------------------+
-
+```
 
 ### 7. Key Challenges and there solution
   
